@@ -289,3 +289,5 @@
 .settings-ok { color: var(--green); font-size: 13px; margin: 8px 0; }
 .settings-danger-zone { border-color: rgba(239,68,68,0.15); }
 .settings-export-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+
