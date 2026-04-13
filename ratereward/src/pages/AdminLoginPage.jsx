@@ -1,80 +1,85 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react'
-import { verifyAdmin } from '../lib/storage'
-import './AdminLoginPage.css'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import './AdminLoginPage.css';
+
+const ADMIN_EMAIL = 'admin@ratereward.com';
+const ADMIN_PASSWORD = 'Admin@2025!';
 
 export default function AdminLoginPage() {
-  const nav = useNavigate()
-  const [email, setEmail] = useState('')
-  const [pass, setPass] = useState('')
-  const [showPass, setShowPass] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const nav = useNavigate();
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   function handleLogin(e) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
     setTimeout(() => {
-      if (verifyAdmin(email, pass)) {
-        sessionStorage.setItem('rr_admin', '1')
-        nav('/admin/dashboard')
+      if (email === ADMIN_EMAIL && pass === ADMIN_PASSWORD) {
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        nav('/admin/dashboard');
       } else {
-        setError('Invalid email or password.')
-        setLoading(false)
+        setError('Invalid email or password.');
       }
-    }, 800)
+      setLoading(false);
+    }, 800);
   }
 
   return (
-    <div className="admin-login-page">
-      <div className="al-glow" />
-      <div className="al-card">
-        <div className="al-icon-wrap">
-          <ShieldCheck size={28} />
+    <div className="admin-login-container">
+      <div className="admin-login-card">
+        <div className="admin-login-icon">
+          <ShieldCheck size={40} color="#00d4aa" />
         </div>
-        <h1>Admin portal</h1>
-        <p className="al-sub">RateReward control center</p>
+        <h2>Admin Login</h2>
+        <p className="admin-login-subtitle">RateReward Admin Panel</p>
 
-        <form onSubmit={handleLogin}>
-          <div className="al-field">
+        {error && <div className="admin-error">{error}</div>}
+
+        <form onSubmit={handleLogin} className="admin-login-form">
+          <div className="form-group">
             <label>Email</label>
             <input
               type="email"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setError('') }}
               placeholder="admin@ratereward.com"
-              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
-          <div className="al-field">
+
+          <div className="form-group password-group">
             <label>Password</label>
-            <div className="al-pass-wrap">
+            <div className="password-input-wrapper">
               <input
                 type={showPass ? 'text' : 'password'}
+                placeholder="Enter password"
                 value={pass}
-                onChange={e => { setPass(e.target.value); setError('') }}
-                placeholder="••••••••••"
-                autoComplete="current-password"
+                onChange={(e) => setPass(e.target.value)}
+                required
               />
-              <button type="button" className="al-eye" onClick={() => setShowPass(v => !v)}>
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              <button
+                type="button"
+                className="toggle-pass"
+                onClick={() => setShowPass(!showPass)}
+              >
+                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
-          {error && <p className="al-error">{error}</p>}
-          <button type="submit" className="al-btn" disabled={loading}>
-            {loading ? <span className="al-spinner" /> : <><Lock size={15} /> Sign in</>}
+
+          <button type="submit" className="admin-login-btn" disabled={loading}>
+            {loading ? 'Logging in...' : (
+              <><Lock size={16} /> Login</>
+            )}
           </button>
         </form>
-
-        <p className="al-hint">
-          Default: <code>admin@ratereward.com</code> / <code>Admin@2025!</code><br />
-          <span style={{ fontSize: 11, opacity: 0.5 }}>Change credentials in Settings tab after login.</span>
-        </p>
-        <a className="al-back" href="/">← Back to site</a>
       </div>
     </div>
-  )
+  );
 }
