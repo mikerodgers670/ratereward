@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
 import "./AdminDashboard.css";
 
 const SUPABASE_URL = "https://cajmxqlkxsdnuzypnbxc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fSRvlD3PY9xNfsaMD5vvuQ_VNBUbKll";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const headers = {
+  "Content-Type": "application/json",
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -25,37 +29,44 @@ export default function AdminDashboard() {
 
   const fetchMembers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("members")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching members:", error);
-    } else {
-      setMembers(data);
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/members?select=*&order=created_at.desc`,
+        { headers }
+      );
+      const data = await response.json();
+      setMembers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching members:", err);
     }
     setLoading(false);
   };
 
   const updateStatus = async (id, newStatus) => {
-    const { error } = await supabase
-      .from("members")
-      .update({ status: newStatus })
-      .eq("id", id);
-
-    if (!error) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/members?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { ...headers, Prefer: "return=minimal" },
+        body: JSON.stringify({ status: newStatus }),
+      });
       setMembers((prev) =>
         prev.map((m) => (m.id === id ? { ...m, status: newStatus } : m))
       );
+    } catch (err) {
+      console.error("Error updating status:", err);
     }
   };
 
   const deleteMember = async (id) => {
     if (!window.confirm("Are you sure you want to delete this member?")) return;
-    const { error } = await supabase.from("members").delete().eq("id", id);
-    if (!error) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/members?id=eq.${id}`, {
+        method: "DELETE",
+        headers,
+      });
       setMembers((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error("Error deleting member:", err);
     }
   };
 
