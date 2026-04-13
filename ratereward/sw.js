@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ratereward-v1'
+const CACHE_NAME = 'ratereward-v3';
 const ASSETS = [
   '/',
   '/index.html',
