@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
 import "./RegisterPage.css";
 
 const SUPABASE_URL = "https://cajmxqlkxsdnuzypnbxc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fSRvlD3PY9xNfsaMD5vvuQ_VNBUbKll";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 
 const plans = [
   { amount: 200, label: "KES 200", returns: "KES 300" },
