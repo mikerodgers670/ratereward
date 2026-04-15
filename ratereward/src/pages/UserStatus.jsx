@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import "./UserStatus.css";
+
+const SUPABASE_URL = 'https://cajmxqlkxsdnuzypnbxc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fSRvlD3PY9xNfsaMD5vvuQ_VNBUbKll';
+
+const headers = {
+  'Content-Type': 'application/json',
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+};
 
 export default function UserStatus() {
   const [phone, setPhone] = useState("");
@@ -22,23 +30,26 @@ export default function UserStatus() {
       return;
     }
 
-    const { data, error: dbError } = await supabase
-      .from("members")
-      .select("*")
-      .eq("phone", cleaned)
-      .single();
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/members?phone=eq.${encodeURIComponent(cleaned)}&select=*`,
+        { headers }
+      );
+      const data = await res.json();
 
-    if (dbError || !data) {
-      setError("No account found with that phone number.");
-    } else {
-      setMember(data);
+      if (!Array.isArray(data) || data.length === 0) {
+        setError("No account found with that phone number.");
+      } else {
+        setMember(data[0]);
+      }
+    } catch (e) {
+      setError("Something went wrong. Please try again.");
     }
 
     setLoading(false);
   };
 
   const getDaysInfo = (member) => {
-    // Only show countdown if status is active AND approved_at exists
     if (member.status !== "active" || !member.approved_at) return null;
 
     const approvedDate = new Date(member.approved_at);
@@ -54,7 +65,7 @@ export default function UserStatus() {
     return { daysRemaining, progress, payoutDate };
   };
 
-  const getStatusLabel = (status) => {
+  const getStatusInfo = (status) => {
     switch (status) {
       case "pending": return { label: "Pending Approval", emoji: "⏳", cls: "status-pending" };
       case "active": return { label: "Active", emoji: "✅", cls: "status-active" };
@@ -64,18 +75,16 @@ export default function UserStatus() {
   };
 
   const daysInfo = member ? getDaysInfo(member) : null;
-  const statusInfo = member ? getStatusLabel(member.status) : null;
+  const statusInfo = member ? getStatusInfo(member.status) : null;
 
   return (
     <div className="us-wrapper">
       <div className="us-card">
-        {/* Header */}
         <div className="us-header">
           <div className="us-logo">Rate<span>Reward</span></div>
           <p className="us-subtitle">Check your investment status</p>
         </div>
 
-        {/* Search */}
         {!member && (
           <div className="us-search-section">
             <label className="us-label">Enter your phone number</label>
@@ -94,10 +103,8 @@ export default function UserStatus() {
           </div>
         )}
 
-        {/* Result */}
         {member && (
           <div className="us-result">
-            {/* Name & Status */}
             <div className="us-name-row">
               <div className="us-avatar">{member.full_name?.charAt(0).toUpperCase()}</div>
               <div>
@@ -108,7 +115,6 @@ export default function UserStatus() {
               </div>
             </div>
 
-            {/* Plan Details */}
             <div className="us-details">
               <div className="us-detail-row">
                 <span>Plan</span>
@@ -116,7 +122,7 @@ export default function UserStatus() {
               </div>
               <div className="us-detail-row">
                 <span>Deposit</span>
-                <span>KSh {Number(member.amount).toLocaleString()}</span>
+                <span>KSh {Number(member.amount || member.amount_paid).toLocaleString()}</span>
               </div>
               <div className="us-detail-row highlight">
                 <span>You Receive</span>
@@ -128,7 +134,6 @@ export default function UserStatus() {
               </div>
             </div>
 
-            {/* Status Messages */}
             {member.status === "pending" && (
               <div className="us-notice pending">
                 <span>⏳</span>
@@ -164,7 +169,6 @@ export default function UserStatus() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="us-actions">
               <button className="us-btn-ghost" onClick={() => { setMember(null); setPhone(""); }}>
                 Check Another
