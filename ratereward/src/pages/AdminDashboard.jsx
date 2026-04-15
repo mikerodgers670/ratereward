@@ -36,15 +36,18 @@ export default function AdminDashboard() {
     }
     setLoading(false);
   }
+  const approveMember = async (id) => {
+  const { error } = await supabase
+    .from("members")
+    .update({
+      status: "active",
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", id);
 
-  async function updateStatus(id, status) {
-    await fetch(`${SUPABASE_URL}/rest/v1/members?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: { ...headers, Prefer: 'return=minimal' },
-      body: JSON.stringify({ status }),
-    });
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, status } : m));
-  }
+  if (!error) fetchMembers();
+};
+
 
   async function deleteMember(id) {
     if (!window.confirm('Delete this member?')) return;
