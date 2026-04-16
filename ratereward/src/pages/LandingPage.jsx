@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Star, ArrowRight, Shield, Zap, Users, TrendingUp, ChevronDown, CheckCircle2, Clock, Gift } from 'lucide-react'
+import { Star, ArrowRight, Shield, Zap, Users, TrendingUp, ChevronDown, CheckCircle2, Clock, Gift, X } from 'lucide-react'
 import './LandingPage.css'
+
+const SUPABASE_URL = 'https://cajmxqlkxsdnuzypnbxc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fSRvlD3PY9xNfsaMD5vvuQ_VNBUbKll';
+const headers = {
+  'Content-Type': 'application/json',
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+};
 
 const STATS = [
   { value: '12,400+', label: 'Active members' },
@@ -55,9 +63,145 @@ function AnimSection({ children, className = '' }) {
   return <div ref={ref} className={`anim-section ${inView ? 'visible' : ''} ${className}`}>{children}</div>
 }
 
+// STATUS MODAL
+function StatusModal({ onClose }) {
+  const [phone, setPhone] = useState('');
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCheck = async () => {
+    setLoading(true);
+    setError('');
+    setMember(null);
+    const cleaned = phone.trim();
+    if (!cleaned) { setError('Please enter your phone number.'); setLoading(false); return; }
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/members?phone=eq.${encodeURIComponent(cleaned)}&select=*`,
+        { headers }
+      );
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        setError('No account found with that phone number.');
+      } else {
+        setMember(data[0]);
+      }
+    } catch (e) {
+      setError('Something went wrong. Please try again.');
+    }
+    setLoading(false);
+  };
+
+  const getDaysInfo = (m) => {
+    if (m.status !== 'active' || !m.approved_at) return null;
+    const approvedDate = new Date(m.approved_at);
+    const now = new Date();
+    const totalDays = 14;
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysPassed = Math.floor((now - approvedDate) / msPerDay);
+    const daysRemaining = Math.max(totalDays - daysPassed, 0);
+    const progress = Math.min(((totalDays - daysRemaining) / totalDays) * 100, 100);
+    const payoutDate = new Date(approvedDate);
+    payoutDate.setDate(payoutDate.getDate() + totalDays);
+    return { daysRemaining, progress, payoutDate };
+  };
+
+  const daysInfo = member ? getDaysInfo(member) : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}><X size={18} /></button>
+        <div className="modal-logo">Rate<span>Reward</span></div>
+        <p className="modal-subtitle">Check your investment status</p>
+
+        {!member && (
+          <>
+            <label className="modal-label">Your phone number</label>
+            <input
+              className="modal-input"
+              type="tel"
+              placeholder="e.g. 0712345678"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCheck()}
+            />
+            {error && <p className="modal-error">{error}</p>}
+            <button className="modal-btn" onClick={handleCheck} disabled={loading}>
+              {loading ? 'Checking...' : 'Check Status'}
+            </button>
+          </>
+        )}
+
+        {member && (
+          <div className="modal-result">
+            {/* Name row */}
+            <div className="modal-name-row">
+              <div className="modal-avatar">{member.full_name?.charAt(0).toUpperCase()}</div>
+              <div>
+                <div className="modal-name">{member.full_name}</div>
+                <span className={`modal-badge ${member.status === 'pending' ? 'badge-pending' : member.status === 'active' ? 'badge-active' : 'badge-done'}`}>
+                  {member.status === 'pending' ? '⏳ Pending Approval' : member.status === 'active' ? '✅ Active' : '🎉 Completed'}
+                </span>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="modal-details">
+              <div className="modal-row"><span>Plan</span><span>{member.plan}</span></div>
+              <div className="modal-row"><span>Deposit</span><span>KSh {Number(member.amount || member.amount_paid).toLocaleString()}</span></div>
+              <div className="modal-row gold"><span>You Receive</span><span>KSh {Number(member.reward).toLocaleString()}</span></div>
+            </div>
+
+            {/* Pending message */}
+            {member.status === 'pending' && (
+              <div className="modal-notice pending">
+                <span>⏳</span>
+                <div>
+                  <strong>Awaiting Approval</strong>
+                  <p>Once you deposit and we confirm payment, your 14-day countdown begins.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Active countdown */}
+            {member.status === 'active' && daysInfo && (
+              <div className="modal-countdown">
+                <div className="modal-cd-header">
+                  <span>⏱ Days Remaining</span>
+                  <span className="modal-days">{daysInfo.daysRemaining} days</span>
+                </div>
+                <div className="modal-progress"><div className="modal-progress-fill" style={{ width: `${daysInfo.progress}%` }} /></div>
+                <p className="modal-payout">Payout: <strong>{daysInfo.payoutDate.toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>
+              </div>
+            )}
+
+            {/* Completed */}
+            {member.status === 'completed' && (
+              <div className="modal-notice completed">
+                <span>🎉</span>
+                <div>
+                  <strong>Payout Complete!</strong>
+                  <p>KSh {Number(member.reward).toLocaleString()} has been sent to your account.</p>
+                </div>
+              </div>
+            )}
+
+            <button className="modal-btn-ghost" onClick={() => { setMember(null); setPhone(''); }}>
+              Check another number
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const nav = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+  const [showStatus, setShowStatus] = useState(false)
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40)
@@ -67,6 +211,9 @@ export default function LandingPage() {
 
   return (
     <div className="landing">
+      {/* STATUS MODAL */}
+      {showStatus && <StatusModal onClose={() => setShowStatus(false)} />}
+
       {/* NAV */}
       <nav className={`nav ${scrolled ? 'nav-scrolled' : ''}`}>
         <div className="nav-inner">
@@ -79,9 +226,14 @@ export default function LandingPage() {
             <a href="#features">Features</a>
             <a href="#testimonials">Reviews</a>
           </div>
-          <button className="btn-gold" onClick={() => nav('/register')}>
-            Get started <ArrowRight size={15} />
-          </button>
+          <div className="nav-btns">
+            <button className="btn-ghost-sm" onClick={() => setShowStatus(true)}>
+              Check Status
+            </button>
+            <button className="btn-gold" onClick={() => nav('/register')}>
+              Get started <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -106,9 +258,9 @@ export default function LandingPage() {
             <button className="btn-gold btn-lg" onClick={() => nav('/register')}>
               Start earning now <ArrowRight size={17} />
             </button>
-            <a href="#how" className="btn-ghost">
-              See how it works <ChevronDown size={16} />
-            </a>
+            <button className="btn-ghost" onClick={() => setShowStatus(true)}>
+              Check my status
+            </button>
           </div>
 
           {/* MOCK PHONE */}
